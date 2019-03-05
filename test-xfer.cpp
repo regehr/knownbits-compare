@@ -209,7 +209,7 @@ void test(const int W) {
 
 int main(void) {
   if (true) {
-    test(2);
+    test(3);
   } else {
     for (int Width = 1; Width <= MaxWidth; ++Width)
       test(Width);
