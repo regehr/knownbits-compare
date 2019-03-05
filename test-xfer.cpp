@@ -12,21 +12,36 @@
 
 using namespace llvm;
 
-const int MaxWidth = 5;
-
 namespace {
 
 ///////////////////////////////////////////////////////
 
 enum class Tristate { Unknown = -1, False = 0, True = 1 };
 
-APInt getUMin(KnownBits x) { return x.One; }
+APInt getUMin(const KnownBits &x) { return x.One; }
 
-APInt getUMax(KnownBits x) { return ~x.Zero; }
+APInt getUMax(const KnownBits &x) { return ~x.Zero; }
 
-APInt getSMin(KnownBits x) { return x.One; }
+bool isSignKnown(const KnownBits &x) {
+  unsigned W = x.getBitWidth();
+  return x.One[W - 1] || x.Zero[W - 1];
+}
 
-APInt getSMax(KnownBits x) { return ~x.Zero; }
+APInt getSMin(const KnownBits &x) { 
+  if (isSignKnown(x))
+    return x.One;
+  APInt Min = x.One;
+  Min.setBit(x.getBitWidth() - 1);
+  return Min;
+}
+
+APInt getSMax(const KnownBits &x) {
+  if (isSignKnown(x))
+    return ~x.Zero; 
+  APInt Max = ~x.Zero;
+  Max.clearBit(x.getBitWidth() - 1);
+  return Max;
+}
 
 Tristate myULT(KnownBits x, KnownBits y) {
   if (getUMax(x).ult(getUMin(y)))
@@ -36,7 +51,17 @@ Tristate myULT(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
+Tristate mySLT(KnownBits x, KnownBits y) {
+  if (getSMax(x).slt(getSMin(y)))
+    return Tristate::True;
+  if (getSMin(x).sge(getSMax(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
+
 ///////////////////////////////////////////////////////
+
+const bool Verbose = false;
 
 std::string knownBitsString(llvm::KnownBits KB) {
   std::string S = "";
@@ -157,22 +182,40 @@ APInt bfSMax(KnownBits x) {
 void testMinMax(int W) {
   KnownBits x(W);
   do {
-    std::cout << knownBitsString(x);
-
-    std::cout << " UMin = " << getUMin(x).toString(10, false);
-    std::cout << " (" << bfUMin(x).toString(10, false) << ")  ";
-    std::cout << "UMax = " << getUMax(x).toString(10, false);
-    std::cout << " (" << bfUMax(x).toString(10, false) << ")  ";
-    if (bfUMin(x).ugt(bfUMax(x)))
-      llvm::report_fatal_error("unsigned");
-
-    std::cout << " SMin = " << getSMin(x).toString(10, true);
-    std::cout << " (" << bfSMin(x).toString(10, true) << ")  ";
-    std::cout << "SMax = " << getSMax(x).toString(10, true);
-    std::cout << " (" << bfSMax(x).toString(10, true) << ")\n";
-    if (bfSMin(x).sgt(bfSMax(x)))
-      llvm::report_fatal_error("signed");
-
+    if (Verbose)
+      std::cout << knownBitsString(x);
+    {
+      auto UMin = getUMin(x);
+      auto UMinBF = bfUMin(x);
+      auto UMax = getUMax(x);
+      auto UMaxBF = bfUMax(x);
+      if (Verbose) { 
+	std::cout << " UMin = " << UMin.toString(10, false);
+	std::cout << " (" << UMinBF.toString(10, false) << ")  ";
+	std::cout << "UMax = " << UMax.toString(10, false);
+	std::cout << " (" << UMaxBF.toString(10, false) << ")  ";
+      }
+      if (UMin != UMinBF)
+	llvm::report_fatal_error("UMin");
+      if (UMax != UMaxBF)
+	llvm::report_fatal_error("UMax");
+    }
+    {
+      auto SMin = getSMin(x);
+      auto SMinBF = bfSMin(x);
+      auto SMax = getSMax(x);
+      auto SMaxBF = bfSMax(x);
+      if (Verbose) { 
+	std::cout << " SMin = " << SMin.toString(10, false);
+	std::cout << " (" << SMinBF.toString(10, false) << ")  ";
+	std::cout << "SMax = " << SMax.toString(10, false);
+	std::cout << " (" << SMaxBF.toString(10, false) << ")\n";
+      }
+      if (SMin != SMinBF)
+	llvm::report_fatal_error("SMin");
+      if (SMax != SMaxBF)
+	llvm::report_fatal_error("SMax");
+    }
   } while (nextKB(x));
 }
 
@@ -193,8 +236,10 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
 void test(const int W) {
   if (true)
     testMinMax(W);
-  if (false)
+  if (true) {
     testAll(W, CmpInst::ICMP_ULT);
+    testAll(W, CmpInst::ICMP_SLT);
+  }
 }
 
 } // namespace
@@ -203,7 +248,7 @@ int main(void) {
   if (true) {
     test(3);
   } else {
-    for (int Width = 1; Width <= MaxWidth; ++Width)
+    for (int Width = 1; Width <= 8; ++Width)
       test(Width);
   }
   return 0;
