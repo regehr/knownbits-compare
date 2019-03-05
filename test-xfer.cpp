@@ -1,20 +1,42 @@
+#include "llvm/ADT/APInt.h"
+#include "llvm/Analysis/LazyValueInfo.h"
+#include "llvm/Analysis/ValueTracking.h"
+#include "llvm/IR/ConstantRange.h"
+#include "llvm/Support/KnownBits.h"
+#include "llvm/Support/raw_ostream.h"
 #include <chrono>
 #include <ctime>
 #include <iostream>
 #include <ratio>
 #include <string>
-#include "llvm/ADT/APInt.h"
-#include "llvm/IR/ConstantRange.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Analysis/ValueTracking.h"
-#include "llvm/Support/KnownBits.h"
-#include "llvm/Analysis/LazyValueInfo.h"
 
 using namespace llvm;
 
 const int MaxWidth = 5;
 
 namespace {
+
+///////////////////////////////////////////////////////
+
+enum class Tristate { Unknown = -1, False = 0, True = 1 };
+
+APInt getUMin(KnownBits x) { return x.One; }
+
+APInt getUMax(KnownBits x) { return ~x.Zero; }
+
+APInt getSMin(KnownBits x) { return x.One; }
+
+APInt getSMax(KnownBits x) { return ~x.Zero; }
+
+Tristate myULT(KnownBits x, KnownBits y) {
+  if (getUMax(x).ult(getUMin(y)))
+    return Tristate::True;
+  if (getUMin(x).uge(getUMax(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
+
+///////////////////////////////////////////////////////
 
 std::string knownBitsString(llvm::KnownBits KB) {
   std::string S = "";
@@ -52,10 +74,6 @@ bool nextKB(KnownBits &x) {
   return false;
 }
 
-enum class Tristate {
-  Unknown = -1, False = 0, True = 1
-};
-
 const char *printTristate(Tristate t) {
   if (t == Tristate::True)
     return "true";
@@ -64,9 +82,7 @@ const char *printTristate(Tristate t) {
   return "unknown";
 }
 
-bool isConcrete(KnownBits x) {
-  return (x.Zero | x.One).isAllOnesValue();
-}
+bool isConcrete(KnownBits x) { return (x.Zero | x.One).isAllOnesValue(); }
 
 Tristate merge(Tristate a, Tristate b) {
   if (a == Tristate::True && b == Tristate::True)
@@ -98,29 +114,12 @@ KnownBits clearLowest(KnownBits x) {
 
 Tristate bruteForce(KnownBits x, KnownBits y) {
   if (!isConcrete(x))
-    return merge(bruteForce(setLowest(x), y),
-		 bruteForce(clearLowest(x), y));
+    return merge(bruteForce(setLowest(x), y), bruteForce(clearLowest(x), y));
   if (!isConcrete(y))
-    return merge(bruteForce(x, setLowest(y)),
-		 bruteForce(x, clearLowest(y)));
+    return merge(bruteForce(x, setLowest(y)), bruteForce(x, clearLowest(y)));
   // FIXME generalize
-  return x.getConstant().ult(y.getConstant()) ? Tristate::True : Tristate::False;
-}
-
-APInt getUMax(KnownBits x) {
-  return ~x.Zero;
-}
-
-APInt getUMin(KnownBits x) {
-  return x.One;
-}
-
-APInt getSMax(KnownBits x) {
-  return ~x.Zero;
-}
-
-APInt getSMin(KnownBits x) {
-  return x.One;
+  return x.getConstant().ult(y.getConstant()) ? Tristate::True
+                                              : Tristate::False;
 }
 
 APInt bfUMin(KnownBits x) {
@@ -177,23 +176,16 @@ void testMinMax(int W) {
   } while (nextKB(x));
 }
 
-Tristate myCompare(KnownBits x, KnownBits y) {
-  if (getUMax(x).ult(getUMin(y)))
-    return Tristate::True;
-  if (getUMin(x).uge(getUMax(y)))
-    return Tristate::False;
-  return Tristate::Unknown;
-}
-
 void testAll(const int W, ICmpInst::Predicate Pred) {
   KnownBits x(W);
   do {
     KnownBits y(W);
     do {
-      auto Res1 = myCompare(x, y);
+      auto Res1 = myULT(x, y);
       auto Res2 = bruteForce(x, y);
       std::cout << knownBitsString(x) << " <u " << knownBitsString(y);
-      std::cout << " = " << printTristate(Res1) << " (" << printTristate(Res2) << ")\n";
+      std::cout << " = " << printTristate(Res1) << " (" << printTristate(Res2)
+                << ")\n";
     } while (nextKB(y));
   } while (nextKB(x));
 }
@@ -205,7 +197,7 @@ void test(const int W) {
     testAll(W, CmpInst::ICMP_ULT);
 }
 
-} // anon namespace
+} // namespace
 
 int main(void) {
   if (true) {
