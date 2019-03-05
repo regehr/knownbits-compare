@@ -115,6 +115,14 @@ APInt getUMin(KnownBits x) {
   return x.One;
 }
 
+APInt getSMax(KnownBits x) {
+  return ~x.Zero;
+}
+
+APInt getSMin(KnownBits x) {
+  return x.One;
+}
+
 APInt bfUMin(KnownBits x) {
   if (isConcrete(x))
     return x.getConstant();
@@ -131,13 +139,37 @@ APInt bfUMax(KnownBits x) {
   return a.ugt(b) ? a : b;
 }
 
+APInt bfSMin(KnownBits x) {
+  if (isConcrete(x))
+    return x.getConstant();
+  auto a = bfUMin(setLowest(x));
+  auto b = bfUMin(clearLowest(x));
+  return a.slt(b) ? a : b;
+}
+
+APInt bfSMax(KnownBits x) {
+  if (isConcrete(x))
+    return x.getConstant();
+  auto a = bfUMax(setLowest(x));
+  auto b = bfUMax(clearLowest(x));
+  return a.sgt(b) ? a : b;
+}
+
 void testMinMax(int W) {
   KnownBits x(W);
   do {
-    std::cout << knownBitsString(x) << " UMin = " << getUMin(x).toString(10, false);
+    std::cout << knownBitsString(x);
+
+    std::cout << " UMin = " << getUMin(x).toString(10, false);
     std::cout << " (" << bfUMin(x).toString(10, false) << ")  ";
     std::cout << "UMax = " << getUMax(x).toString(10, false);
-    std::cout << " (" << bfUMax(x).toString(10, false) << ")\n";
+    std::cout << " (" << bfUMax(x).toString(10, false) << ")  ";
+
+    std::cout << " SMin = " << getSMin(x).toString(10, true);
+    std::cout << " (" << bfSMin(x).toString(10, true) << ")  ";
+    std::cout << "SMax = " << getSMax(x).toString(10, true);
+    std::cout << " (" << bfSMax(x).toString(10, true) << ")\n";
+
   } while (nextKB(x));
 }
 
@@ -163,9 +195,9 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
 }
 
 void test(const int W) {
-  if (false)
-    testMinMax(W);
   if (true)
+    testMinMax(W);
+  if (false)
     testAll(W, CmpInst::ICMP_ULT);
 }
 
