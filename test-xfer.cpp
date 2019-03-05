@@ -142,13 +142,9 @@ void testMinMax(int W) {
 }
 
 Tristate myCompare(KnownBits x, KnownBits y) {
-  APInt xmax = getUMax(x);
-  APInt xmin = getUMin(x);
-  APInt ymax = getUMax(y);
-  APInt ymin = getUMin(y);
-  if (xmax.ult(ymin))
+  if (getUMax(x).ult(getUMin(y)))
     return Tristate::True;
-  if (xmin.ugt(ymax))
+  if (getUMin(x).uge(getUMax(y)))
     return Tristate::False;
   return Tristate::Unknown;
 }
