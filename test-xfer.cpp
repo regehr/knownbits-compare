@@ -8,6 +8,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/KnownBits.h"
+#include "llvm/Analysis/LazyValueInfo.h"
 
 using namespace llvm;
 
@@ -49,6 +50,41 @@ bool nextKB(KnownBits &x) {
     llvm::report_fatal_error("wow, hosed KB!");
   }
   return false;
+}
+
+enum class Tristate {
+  Unknown = -1, False = 0, True = 1
+};
+
+bool isConcrete(KnownBits x) {
+  return (x.Zero | x.One).isAllOnesValue();
+}
+
+Tristate merge(Tristate a, Tristate b) {
+  if (a == Tristate::True && b == Tristate::True)
+    return Tristate::True;
+  if (a == Tristate::False && b == Tristate::False)
+    return Tristate::False;
+  return Tristate::Unknown;
+}
+
+KnownBits setLowest(KnownBits x) {
+  return x;
+}
+
+KnownBits clearLowest(KnownBits x) {
+  return x;
+}
+
+Tristate compareAll(KnownBits x, KnownBits y) {
+  if (!isConcrete(x))
+    return merge(compareAll(setLowest(x), y),
+		 compareAll(clearLowest(x), y));
+  if (!isConcrete(y))
+    return merge(compareAll(x, setLowest(y)),
+		 compareAll(x, clearLowest(y)));
+  // FIXME
+  return x.getConstant().ugt(y.getConstant()) ? Tristate::True : Tristate::False;
 }
 
 void testAll(const int W, ICmpInst::Predicate Pred) {
