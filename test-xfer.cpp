@@ -93,18 +93,64 @@ KnownBits clearLowest(KnownBits x) {
       return x;
     }
   }
-  llvm::report_fatal_error("can't set");
+  llvm::report_fatal_error("can't clear");
 }
 
-Tristate compareAll(KnownBits x, KnownBits y) {
+Tristate bruteForce(KnownBits x, KnownBits y) {
   if (!isConcrete(x))
-    return merge(compareAll(setLowest(x), y),
-		 compareAll(clearLowest(x), y));
+    return merge(bruteForce(setLowest(x), y),
+		 bruteForce(clearLowest(x), y));
   if (!isConcrete(y))
-    return merge(compareAll(x, setLowest(y)),
-		 compareAll(x, clearLowest(y)));
+    return merge(bruteForce(x, setLowest(y)),
+		 bruteForce(x, clearLowest(y)));
   // FIXME
   return x.getConstant().ult(y.getConstant()) ? Tristate::True : Tristate::False;
+}
+
+APInt getUMax(KnownBits x) {
+  return ~x.Zero;
+}
+
+APInt getUMin(KnownBits x) {
+  return x.One;
+}
+
+APInt bfUMin(KnownBits x) {
+  if (isConcrete(x))
+    return x.getConstant();
+  auto a = bfUMin(setLowest(x));
+  auto b = bfUMin(clearLowest(x));
+  return a.ult(b) ? a : b;
+}
+
+APInt bfUMax(KnownBits x) {
+  if (isConcrete(x))
+    return x.getConstant();
+  auto a = bfUMax(setLowest(x));
+  auto b = bfUMax(clearLowest(x));
+  return a.ugt(b) ? a : b;
+}
+
+void testMinMax(int W) {
+  KnownBits x(W);
+  do {
+    std::cout << knownBitsString(x) << " UMin = " << getUMin(x).toString(10, false);
+    std::cout << " (" << bfUMin(x).toString(10, false) << ")  ";
+    std::cout << "UMax = " << getUMax(x).toString(10, false);
+    std::cout << " (" << bfUMax(x).toString(10, false) << ")\n";
+  } while (nextKB(x));
+}
+
+Tristate myCompare(KnownBits x, KnownBits y) {
+  APInt xmax = getUMax(x);
+  APInt xmin = getUMin(x);
+  APInt ymax = getUMax(y);
+  APInt ymin = getUMin(y);
+  if (xmax.ult(ymin))
+    return Tristate::True;
+  if (xmin.ult(ymax))
+    return Tristate::False;
+  return Tristate::Unknown;
 }
 
 void testAll(const int W, ICmpInst::Predicate Pred) {
@@ -112,19 +158,23 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
   do {
     KnownBits y(W);
     do {
-      auto Res = compareAll(x, y);
+      auto Res1 = myCompare(x, y);
+      auto Res2 = bruteForce(x, y);
       std::cout << knownBitsString(x) << " <u " << knownBitsString(y);
-      std::cout << " = " << printTristate(Res) << "\n";
+      std::cout << " = " << printTristate(Res1) << " (" << printTristate(Res2) << ")\n";
     } while (nextKB(y));
   } while (nextKB(x));
 }
 
 void test(const int W) {
-  testAll(W, CmpInst::ICMP_ULT);
+  if (false)
+    testMinMax(W);
+  if (true)
+    testAll(W, CmpInst::ICMP_ULT);
 }
 
 } // anon namespace
-  
+
 int main(void) {
   if (true) {
     test(3);
