@@ -56,6 +56,14 @@ enum class Tristate {
   Unknown = -1, False = 0, True = 1
 };
 
+const char *printTristate(Tristate t) {
+  if (t == Tristate::True)
+    return "true";
+  if (t == Tristate::False)
+    return "false";
+  return "unknown";
+}
+
 bool isConcrete(KnownBits x) {
   return (x.Zero | x.One).isAllOnesValue();
 }
@@ -69,11 +77,23 @@ Tristate merge(Tristate a, Tristate b) {
 }
 
 KnownBits setLowest(KnownBits x) {
-  return x;
+  for (int i = 0; i < x.getBitWidth(); i++) {
+    if (!x.Zero[i] && !x.One[i]) {
+      x.One.setBit(i);
+      return x;
+    }
+  }
+  llvm::report_fatal_error("can't set");
 }
 
 KnownBits clearLowest(KnownBits x) {
-  return x;
+  for (int i = 0; i < x.getBitWidth(); i++) {
+    if (!x.Zero[i] && !x.One[i]) {
+      x.Zero.setBit(i);
+      return x;
+    }
+  }
+  llvm::report_fatal_error("can't set");
 }
 
 Tristate compareAll(KnownBits x, KnownBits y) {
@@ -84,7 +104,7 @@ Tristate compareAll(KnownBits x, KnownBits y) {
     return merge(compareAll(x, setLowest(y)),
 		 compareAll(x, clearLowest(y)));
   // FIXME
-  return x.getConstant().ugt(y.getConstant()) ? Tristate::True : Tristate::False;
+  return x.getConstant().ult(y.getConstant()) ? Tristate::True : Tristate::False;
 }
 
 void testAll(const int W, ICmpInst::Predicate Pred) {
@@ -92,7 +112,9 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
   do {
     KnownBits y(W);
     do {
-      std::cout << knownBitsString(x) << " " << knownBitsString(y) << "\n";
+      auto Res = compareAll(x, y);
+      std::cout << knownBitsString(x) << " <u " << knownBitsString(y);
+      std::cout << " = " << printTristate(Res) << "\n";
     } while (nextKB(y));
   } while (nextKB(x));
 }
