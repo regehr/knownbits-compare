@@ -142,16 +142,16 @@ APInt bfUMax(KnownBits x) {
 APInt bfSMin(KnownBits x) {
   if (isConcrete(x))
     return x.getConstant();
-  auto a = bfUMin(setLowest(x));
-  auto b = bfUMin(clearLowest(x));
+  auto a = bfSMin(setLowest(x));
+  auto b = bfSMin(clearLowest(x));
   return a.slt(b) ? a : b;
 }
 
 APInt bfSMax(KnownBits x) {
   if (isConcrete(x))
     return x.getConstant();
-  auto a = bfUMax(setLowest(x));
-  auto b = bfUMax(clearLowest(x));
+  auto a = bfSMax(setLowest(x));
+  auto b = bfSMax(clearLowest(x));
   return a.sgt(b) ? a : b;
 }
 
@@ -164,11 +164,15 @@ void testMinMax(int W) {
     std::cout << " (" << bfUMin(x).toString(10, false) << ")  ";
     std::cout << "UMax = " << getUMax(x).toString(10, false);
     std::cout << " (" << bfUMax(x).toString(10, false) << ")  ";
+    if (bfUMin(x).ugt(bfUMax(x)))
+      llvm::report_fatal_error("unsigned");
 
     std::cout << " SMin = " << getSMin(x).toString(10, true);
     std::cout << " (" << bfSMin(x).toString(10, true) << ")  ";
     std::cout << "SMax = " << getSMax(x).toString(10, true);
     std::cout << " (" << bfSMax(x).toString(10, true) << ")\n";
+    if (bfSMin(x).sgt(bfSMax(x)))
+      llvm::report_fatal_error("signed");
 
   } while (nextKB(x));
 }
@@ -205,7 +209,7 @@ void test(const int W) {
 
 int main(void) {
   if (true) {
-    test(3);
+    test(2);
   } else {
     for (int Width = 1; Width <= MaxWidth; ++Width)
       test(Width);
