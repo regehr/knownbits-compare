@@ -103,7 +103,7 @@ Tristate bruteForce(KnownBits x, KnownBits y) {
   if (!isConcrete(y))
     return merge(bruteForce(x, setLowest(y)),
 		 bruteForce(x, clearLowest(y)));
-  // FIXME
+  // FIXME generalize
   return x.getConstant().ult(y.getConstant()) ? Tristate::True : Tristate::False;
 }
 
@@ -148,7 +148,7 @@ Tristate myCompare(KnownBits x, KnownBits y) {
   APInt ymin = getUMin(y);
   if (xmax.ult(ymin))
     return Tristate::True;
-  if (xmin.ult(ymax))
+  if (xmin.ugt(ymax))
     return Tristate::False;
   return Tristate::Unknown;
 }
