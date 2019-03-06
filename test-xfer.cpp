@@ -163,7 +163,7 @@ bool nextKB(KnownBits &x) {
   return false;
 }
 
-const char *printTristate(Tristate t) {
+const char *strTristate(Tristate t) {
   if (t == Tristate::True)
     return "true";
   if (t == Tristate::False)
@@ -387,7 +387,7 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
       if (Verbose) {
         std::cout << knownBitsString(x) << " " << predStr(Pred) << " "
                   << knownBitsString(y);
-        std::cout << " = " << printTristate(Res1) << " (" << printTristate(Res2)
+        std::cout << " = " << strTristate(Res1) << " (" << strTristate(Res2)
                   << ")\n";
       }
       if (Res1 != Res2)
