@@ -44,32 +44,24 @@ APInt getSMax(const KnownBits &x) {
 }
 
 Tristate myEQ(KnownBits x, KnownBits y) {
-  if (x.isConstant() && y.isConstant() &&
-      (x.getConstant() == y.getConstant()))
+  if (x.isConstant() && y.isConstant() && (x.getConstant() == y.getConstant()))
     return Tristate::True;
-  if (((x.One & y.Zero) != 0) ||
-      ((x.Zero & y.One) != 0))
+  if (((x.One & y.Zero) != 0) || ((x.Zero & y.One) != 0))
     return Tristate::False;
   return Tristate::Unknown;
 }
 
 Tristate myNE(KnownBits x, KnownBits y) {
-  if (x.isConstant() && y.isConstant() &&
-      (x.getConstant() == y.getConstant()))
+  if (x.isConstant() && y.isConstant() && (x.getConstant() == y.getConstant()))
     return Tristate::False;
-  if (((x.One & y.Zero) != 0) ||
-      ((x.Zero & y.One) != 0))
+  if (((x.One & y.Zero) != 0) || ((x.Zero & y.One) != 0))
     return Tristate::True;
   return Tristate::Unknown;
 }
 
-Tristate myUGT(KnownBits x, KnownBits y) {
-  return Tristate::Unknown;
-}
+Tristate myUGT(KnownBits x, KnownBits y) { return Tristate::Unknown; }
 
-Tristate myUGE(KnownBits x, KnownBits y) {
-  return Tristate::Unknown;
-}
+Tristate myUGE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
 
 Tristate myULT(KnownBits x, KnownBits y) {
   if (getUMax(x).ult(getUMin(y)))
@@ -79,17 +71,11 @@ Tristate myULT(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
-Tristate myULE(KnownBits x, KnownBits y) {
-  return Tristate::Unknown;
-}
+Tristate myULE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
 
-Tristate mySGT(KnownBits x, KnownBits y) {
-  return Tristate::Unknown;
-}
+Tristate mySGT(KnownBits x, KnownBits y) { return Tristate::Unknown; }
 
-Tristate mySGE(KnownBits x, KnownBits y) {
-  return Tristate::Unknown;
-}
+Tristate mySGE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
 
 Tristate mySLT(KnownBits x, KnownBits y) {
   if (getSMax(x).slt(getSMin(y)))
@@ -99,9 +85,7 @@ Tristate mySLT(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
-Tristate mySLE(KnownBits x, KnownBits y) {
-  return Tristate::Unknown;
-}
+Tristate mySLE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
 
 ///////////////////////////////////////////////////////
 
@@ -369,7 +353,8 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
       }
       auto Res2 = bruteForce(x, y, Pred);
       if (Verbose) {
-        std::cout << knownBitsString(x) << " " << predStr(Pred) << " " << knownBitsString(y);
+        std::cout << knownBitsString(x) << " " << predStr(Pred) << " "
+                  << knownBitsString(y);
         std::cout << " = " << printTristate(Res1) << " (" << printTristate(Res2)
                   << ")\n";
       }
@@ -385,14 +370,14 @@ void test(const int W) {
   if (true) {
     testAll(W, CmpInst::ICMP_EQ);
     testAll(W, CmpInst::ICMP_NE);
-    //testAll(W, CmpInst::ICMP_UGT);
-    //testAll(W, CmpInst::ICMP_UGE);
+    // testAll(W, CmpInst::ICMP_UGT);
+    // testAll(W, CmpInst::ICMP_UGE);
     testAll(W, CmpInst::ICMP_ULT);
-    //testAll(W, CmpInst::ICMP_ULE);
-    //testAll(W, CmpInst::ICMP_SGT);
-    //testAll(W, CmpInst::ICMP_SGE);
+    // testAll(W, CmpInst::ICMP_ULE);
+    // testAll(W, CmpInst::ICMP_SGT);
+    // testAll(W, CmpInst::ICMP_SGE);
     testAll(W, CmpInst::ICMP_SLT);
-    //testAll(W, CmpInst::ICMP_SLE);
+    // testAll(W, CmpInst::ICMP_SLE);
   }
   std::cout << "done testing width " << W << ".\n";
 }
