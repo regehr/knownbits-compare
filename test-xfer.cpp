@@ -43,11 +43,51 @@ APInt getSMax(const KnownBits &x) {
   return Max;
 }
 
+Tristate myEQ(KnownBits x, KnownBits y) {
+  if (x.isConstant() && y.isConstant() &&
+      (x.getConstant() == y.getConstant()))
+    return Tristate::True;
+  if (((x.One & y.Zero) != 0) ||
+      ((x.Zero & y.One) != 0))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
+
+Tristate myNE(KnownBits x, KnownBits y) {
+  if (x.isConstant() && y.isConstant() &&
+      (x.getConstant() == y.getConstant()))
+    return Tristate::False;
+  if (((x.One & y.Zero) != 0) ||
+      ((x.Zero & y.One) != 0))
+    return Tristate::True;
+  return Tristate::Unknown;
+}
+
+Tristate myUGT(KnownBits x, KnownBits y) {
+  return Tristate::Unknown;
+}
+
+Tristate myUGE(KnownBits x, KnownBits y) {
+  return Tristate::Unknown;
+}
+
 Tristate myULT(KnownBits x, KnownBits y) {
   if (getUMax(x).ult(getUMin(y)))
     return Tristate::True;
   if (getUMin(x).uge(getUMax(y)))
     return Tristate::False;
+  return Tristate::Unknown;
+}
+
+Tristate myULE(KnownBits x, KnownBits y) {
+  return Tristate::Unknown;
+}
+
+Tristate mySGT(KnownBits x, KnownBits y) {
+  return Tristate::Unknown;
+}
+
+Tristate mySGE(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
@@ -59,9 +99,13 @@ Tristate mySLT(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
+Tristate mySLE(KnownBits x, KnownBits y) {
+  return Tristate::Unknown;
+}
+
 ///////////////////////////////////////////////////////
 
-const bool Verbose = false;
+const bool Verbose = true;
 
 std::string knownBitsString(llvm::KnownBits KB) {
   std::string S = "";
@@ -291,19 +335,35 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
       Tristate Res1;
       switch (Pred) {
       case CmpInst::ICMP_EQ:
+        Res1 = myEQ(x, y);
+        break;
       case CmpInst::ICMP_NE:
+        Res1 = myNE(x, y);
+        break;
       case CmpInst::ICMP_UGT:
+        Res1 = myUGT(x, y);
+        break;
       case CmpInst::ICMP_UGE:
+        Res1 = myUGE(x, y);
+        break;
       case CmpInst::ICMP_ULT:
         Res1 = myULT(x, y);
         break;
       case CmpInst::ICMP_ULE:
+        Res1 = myULE(x, y);
+        break;
       case CmpInst::ICMP_SGT:
+        Res1 = mySGT(x, y);
+        break;
       case CmpInst::ICMP_SGE:
+        Res1 = mySGE(x, y);
+        break;
       case CmpInst::ICMP_SLT:
         Res1 = mySLT(x, y);
         break;
       case CmpInst::ICMP_SLE:
+        Res1 = mySLE(x, y);
+        break;
       default:
         llvm::report_fatal_error("no my version of predicate");
       }
@@ -320,11 +380,19 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
 }
 
 void test(const int W) {
-  if (true)
+  if (false)
     testMinMax(W);
   if (true) {
+    testAll(W, CmpInst::ICMP_EQ);
+    testAll(W, CmpInst::ICMP_NE);
+    //testAll(W, CmpInst::ICMP_UGT);
+    //testAll(W, CmpInst::ICMP_UGE);
     testAll(W, CmpInst::ICMP_ULT);
+    //testAll(W, CmpInst::ICMP_ULE);
+    //testAll(W, CmpInst::ICMP_SGT);
+    //testAll(W, CmpInst::ICMP_SGE);
     testAll(W, CmpInst::ICMP_SLT);
+    //testAll(W, CmpInst::ICMP_SLE);
   }
   std::cout << "done testing width " << W << ".\n";
 }
@@ -332,7 +400,7 @@ void test(const int W) {
 } // namespace
 
 int main(void) {
-  if (false) {
+  if (true) {
     test(2);
   } else {
     for (int Width = 1; Width <= 8; ++Width)
