@@ -59,9 +59,21 @@ Tristate myNE(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
-Tristate myUGT(KnownBits x, KnownBits y) { return Tristate::Unknown; }
+Tristate myUGT(KnownBits x, KnownBits y) {
+  if (getUMin(x).ugt(getUMax(y)))
+    return Tristate::True;
+  if (getUMax(x).ule(getUMin(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
 
-Tristate myUGE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
+Tristate myUGE(KnownBits x, KnownBits y) {
+  if (getUMin(x).uge(getUMax(y)))
+    return Tristate::True;
+  if (getUMax(x).ult(getUMin(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
 
 Tristate myULT(KnownBits x, KnownBits y) {
   if (getUMax(x).ult(getUMin(y)))
@@ -71,11 +83,29 @@ Tristate myULT(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
-Tristate myULE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
+Tristate myULE(KnownBits x, KnownBits y) {
+  if (getUMax(x).ule(getUMin(y)))
+    return Tristate::True;
+  if (getUMin(x).ugt(getUMax(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
 
-Tristate mySGT(KnownBits x, KnownBits y) { return Tristate::Unknown; }
+Tristate mySGT(KnownBits x, KnownBits y) {
+  if (getSMin(x).sgt(getSMax(y)))
+    return Tristate::True;
+  if (getSMax(x).sle(getSMin(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
 
-Tristate mySGE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
+Tristate mySGE(KnownBits x, KnownBits y) {
+  if (getSMin(x).sge(getSMax(y)))
+    return Tristate::True;
+  if (getSMax(x).slt(getSMin(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
 
 Tristate mySLT(KnownBits x, KnownBits y) {
   if (getSMax(x).slt(getSMin(y)))
@@ -85,11 +115,17 @@ Tristate mySLT(KnownBits x, KnownBits y) {
   return Tristate::Unknown;
 }
 
-Tristate mySLE(KnownBits x, KnownBits y) { return Tristate::Unknown; }
+Tristate mySLE(KnownBits x, KnownBits y) {
+  if (getSMax(x).sle(getSMin(y)))
+    return Tristate::True;
+  if (getSMin(x).sgt(getSMax(y)))
+    return Tristate::False;
+  return Tristate::Unknown;
+}
 
 ///////////////////////////////////////////////////////
 
-const bool Verbose = true;
+const bool Verbose = false;
 
 std::string knownBitsString(llvm::KnownBits KB) {
   std::string S = "";
@@ -365,19 +401,19 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
 }
 
 void test(const int W) {
-  if (false)
+  if (true)
     testMinMax(W);
   if (true) {
     testAll(W, CmpInst::ICMP_EQ);
     testAll(W, CmpInst::ICMP_NE);
-    // testAll(W, CmpInst::ICMP_UGT);
-    // testAll(W, CmpInst::ICMP_UGE);
+    testAll(W, CmpInst::ICMP_UGT);
+    testAll(W, CmpInst::ICMP_UGE);
     testAll(W, CmpInst::ICMP_ULT);
-    // testAll(W, CmpInst::ICMP_ULE);
-    // testAll(W, CmpInst::ICMP_SGT);
-    // testAll(W, CmpInst::ICMP_SGE);
+    testAll(W, CmpInst::ICMP_ULE);
+    testAll(W, CmpInst::ICMP_SGT);
+    testAll(W, CmpInst::ICMP_SGE);
     testAll(W, CmpInst::ICMP_SLT);
-    // testAll(W, CmpInst::ICMP_SLE);
+    testAll(W, CmpInst::ICMP_SLE);
   }
   std::cout << "done testing width " << W << ".\n";
 }
@@ -385,8 +421,8 @@ void test(const int W) {
 } // namespace
 
 int main(void) {
-  if (true) {
-    test(2);
+  if (false) {
+    test(3);
   } else {
     for (int Width = 1; Width <= 8; ++Width)
       test(Width);
