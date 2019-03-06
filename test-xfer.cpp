@@ -16,7 +16,7 @@ namespace {
 
 ///////////////////////////////////////////////////////
 
-enum class Tristate { Unknown = -1, False = 0, True = 1 };
+enum class Tristate { Unknown, False, True };
 
 APInt getUMin(const KnownBits &x) { return x.One; }
 
@@ -144,13 +144,39 @@ Tristate bruteForce(KnownBits x, KnownBits y, ICmpInst::Predicate Pred) {
   if (!isConcrete(y))
     return merge(bruteForce(x, setLowest(y), Pred),
                  bruteForce(x, clearLowest(y), Pred));
+  auto xc = x.getConstant();
+  auto yc = y.getConstant();
   bool res;
   switch (Pred) {
+  case CmpInst::ICMP_EQ:
+    res = xc == yc;
+    break;
+  case CmpInst::ICMP_NE:
+    res = xc != yc;
+    break;
+  case CmpInst::ICMP_UGT:
+    res = xc.ugt(yc);
+    break;
+  case CmpInst::ICMP_UGE:
+    res = xc.uge(yc);
+    break;
   case CmpInst::ICMP_ULT:
-    res = x.getConstant().ult(y.getConstant());
+    res = xc.ult(yc);
+    break;
+  case CmpInst::ICMP_ULE:
+    res = xc.ule(yc);
+    break;
+  case CmpInst::ICMP_SGT:
+    res = xc.sgt(yc);
+    break;
+  case CmpInst::ICMP_SGE:
+    res = xc.sge(yc);
     break;
   case CmpInst::ICMP_SLT:
-    res = x.getConstant().slt(y.getConstant());
+    res = xc.slt(yc);
+    break;
+  case CmpInst::ICMP_SLE:
+    res = xc.sle(yc);
     break;
   default:
     llvm::report_fatal_error("no implementation for predicate");
@@ -232,10 +258,26 @@ void testMinMax(int W) {
 
 const char *predStr(ICmpInst::Predicate Pred) {
   switch (Pred) {
+  case CmpInst::ICMP_EQ:
+    return "==";
+  case CmpInst::ICMP_NE:
+    return "!=";
+  case CmpInst::ICMP_UGT:
+    return ">u";
+  case CmpInst::ICMP_UGE:
+    return ">=u";
   case CmpInst::ICMP_ULT:
     return "<u";
+  case CmpInst::ICMP_ULE:
+    return "<=u";
+  case CmpInst::ICMP_SGT:
+    return ">s";
+  case CmpInst::ICMP_SGE:
+    return ">=s";
   case CmpInst::ICMP_SLT:
     return "<s";
+  case CmpInst::ICMP_SLE:
+    return "<=s";
   default:
     llvm::report_fatal_error("no string for predicate");
   }
@@ -248,12 +290,20 @@ void testAll(const int W, ICmpInst::Predicate Pred) {
     do {
       Tristate Res1;
       switch (Pred) {
+      case CmpInst::ICMP_EQ:
+      case CmpInst::ICMP_NE:
+      case CmpInst::ICMP_UGT:
+      case CmpInst::ICMP_UGE:
       case CmpInst::ICMP_ULT:
         Res1 = myULT(x, y);
         break;
+      case CmpInst::ICMP_ULE:
+      case CmpInst::ICMP_SGT:
+      case CmpInst::ICMP_SGE:
       case CmpInst::ICMP_SLT:
         Res1 = mySLT(x, y);
         break;
+      case CmpInst::ICMP_SLE:
       default:
         llvm::report_fatal_error("no my version of predicate");
       }
