@@ -27,7 +27,7 @@ bool isSignKnown(const KnownBits &x) {
   return x.One[W - 1] || x.Zero[W - 1];
 }
 
-APInt getSMin(const KnownBits &x) { 
+APInt getSMin(const KnownBits &x) {
   if (isSignKnown(x))
     return x.One;
   APInt Min = x.One;
@@ -37,7 +37,7 @@ APInt getSMin(const KnownBits &x) {
 
 APInt getSMax(const KnownBits &x) {
   if (isSignKnown(x))
-    return ~x.Zero; 
+    return ~x.Zero;
   APInt Max = ~x.Zero;
   Max.clearBit(x.getBitWidth() - 1);
   return Max;
@@ -189,32 +189,32 @@ void testMinMax(int W) {
       auto UMinBF = bfUMin(x);
       auto UMax = getUMax(x);
       auto UMaxBF = bfUMax(x);
-      if (Verbose) { 
-	std::cout << " UMin = " << UMin.toString(10, false);
-	std::cout << " (" << UMinBF.toString(10, false) << ")  ";
-	std::cout << "UMax = " << UMax.toString(10, false);
-	std::cout << " (" << UMaxBF.toString(10, false) << ")  ";
+      if (Verbose) {
+        std::cout << " UMin = " << UMin.toString(10, false);
+        std::cout << " (" << UMinBF.toString(10, false) << ")  ";
+        std::cout << "UMax = " << UMax.toString(10, false);
+        std::cout << " (" << UMaxBF.toString(10, false) << ")  ";
       }
       if (UMin != UMinBF)
-	llvm::report_fatal_error("UMin");
+        llvm::report_fatal_error("UMin");
       if (UMax != UMaxBF)
-	llvm::report_fatal_error("UMax");
+        llvm::report_fatal_error("UMax");
     }
     {
       auto SMin = getSMin(x);
       auto SMinBF = bfSMin(x);
       auto SMax = getSMax(x);
       auto SMaxBF = bfSMax(x);
-      if (Verbose) { 
-	std::cout << " SMin = " << SMin.toString(10, false);
-	std::cout << " (" << SMinBF.toString(10, false) << ")  ";
-	std::cout << "SMax = " << SMax.toString(10, false);
-	std::cout << " (" << SMaxBF.toString(10, false) << ")\n";
+      if (Verbose) {
+        std::cout << " SMin = " << SMin.toString(10, false);
+        std::cout << " (" << SMinBF.toString(10, false) << ")  ";
+        std::cout << "SMax = " << SMax.toString(10, false);
+        std::cout << " (" << SMaxBF.toString(10, false) << ")\n";
       }
       if (SMin != SMinBF)
-	llvm::report_fatal_error("SMin");
+        llvm::report_fatal_error("SMin");
       if (SMax != SMaxBF)
-	llvm::report_fatal_error("SMax");
+        llvm::report_fatal_error("SMax");
     }
   } while (nextKB(x));
 }
