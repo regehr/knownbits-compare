@@ -137,14 +137,25 @@ KnownBits clearLowest(KnownBits x) {
   llvm::report_fatal_error("can't clear");
 }
 
-Tristate bruteForce(KnownBits x, KnownBits y) {
+Tristate bruteForce(KnownBits x, KnownBits y, ICmpInst::Predicate Pred) {
   if (!isConcrete(x))
-    return merge(bruteForce(setLowest(x), y), bruteForce(clearLowest(x), y));
+    return merge(bruteForce(setLowest(x), y, Pred),
+                 bruteForce(clearLowest(x), y, Pred));
   if (!isConcrete(y))
-    return merge(bruteForce(x, setLowest(y)), bruteForce(x, clearLowest(y)));
-  // FIXME generalize
-  return x.getConstant().ult(y.getConstant()) ? Tristate::True
-                                              : Tristate::False;
+    return merge(bruteForce(x, setLowest(y), Pred),
+                 bruteForce(x, clearLowest(y), Pred));
+  bool res;
+  switch (Pred) {
+  case CmpInst::ICMP_ULT:
+    res = x.getConstant().ult(y.getConstant());
+    break;
+  case CmpInst::ICMP_SLT:
+    res = x.getConstant().slt(y.getConstant());
+    break;
+  default:
+    llvm::report_fatal_error("no implementation for predicate");
+  }
+  return res ? Tristate::True : Tristate::False;
 }
 
 APInt bfUMin(KnownBits x) {
@@ -219,16 +230,41 @@ void testMinMax(int W) {
   } while (nextKB(x));
 }
 
+const char *predStr(ICmpInst::Predicate Pred) {
+  switch (Pred) {
+  case CmpInst::ICMP_ULT:
+    return "<u";
+  case CmpInst::ICMP_SLT:
+    return "<s";
+  default:
+    llvm::report_fatal_error("no string for predicate");
+  }
+}
+
 void testAll(const int W, ICmpInst::Predicate Pred) {
   KnownBits x(W);
   do {
     KnownBits y(W);
     do {
-      auto Res1 = myULT(x, y);
-      auto Res2 = bruteForce(x, y);
-      std::cout << knownBitsString(x) << " <u " << knownBitsString(y);
-      std::cout << " = " << printTristate(Res1) << " (" << printTristate(Res2)
-                << ")\n";
+      Tristate Res1;
+      switch (Pred) {
+      case CmpInst::ICMP_ULT:
+        Res1 = myULT(x, y);
+        break;
+      case CmpInst::ICMP_SLT:
+        Res1 = mySLT(x, y);
+        break;
+      default:
+        llvm::report_fatal_error("no my version of predicate");
+      }
+      auto Res2 = bruteForce(x, y, Pred);
+      if (Verbose) {
+        std::cout << knownBitsString(x) << " " << predStr(Pred) << " " << knownBitsString(y);
+        std::cout << " = " << printTristate(Res1) << " (" << printTristate(Res2)
+                  << ")\n";
+      }
+      if (Res1 != Res2)
+        llvm::report_fatal_error("unsound or imprecise!");
     } while (nextKB(y));
   } while (nextKB(x));
 }
@@ -240,13 +276,14 @@ void test(const int W) {
     testAll(W, CmpInst::ICMP_ULT);
     testAll(W, CmpInst::ICMP_SLT);
   }
+  std::cout << "done testing width " << W << ".\n";
 }
 
 } // namespace
 
 int main(void) {
-  if (true) {
-    test(3);
+  if (false) {
+    test(2);
   } else {
     for (int Width = 1; Width <= 8; ++Width)
       test(Width);
