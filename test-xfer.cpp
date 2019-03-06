@@ -174,11 +174,7 @@ const char *printTristate(Tristate t) {
 bool isConcrete(KnownBits x) { return (x.Zero | x.One).isAllOnesValue(); }
 
 Tristate merge(Tristate a, Tristate b) {
-  if (a == Tristate::True && b == Tristate::True)
-    return Tristate::True;
-  if (a == Tristate::False && b == Tristate::False)
-    return Tristate::False;
-  return Tristate::Unknown;
+  return (a == b) ? a : Tristate::Unknown;
 }
 
 KnownBits setLowest(KnownBits x) {
@@ -424,7 +420,7 @@ int main(void) {
   if (false) {
     test(3);
   } else {
-    for (int Width = 1; Width <= 8; ++Width)
+    for (int Width = 1; Width <= 6; ++Width)
       test(Width);
   }
   return 0;
